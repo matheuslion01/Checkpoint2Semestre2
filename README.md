@@ -438,5 +438,5 @@ Projeto desenvolvido para atividade acadêmica da FIAP.
 
 **Integrantes:**
 
-- Nome: ______________________________ — RM: ______________
-- Nome: ______________________________ — RM: ______________
+- Nome: Guilherme de Nicola Nesti — RM: 555044
+- Nome: Matheus Lion Muzzi Theodoro Nogueira — RM: 555764
