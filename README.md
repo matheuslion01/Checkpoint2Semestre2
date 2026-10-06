@@ -1,149 +1,218 @@
-# checkpoint01-semestre2 - API REST com Spring Boot
+# Checkpoint 02 - API REST com Spring Boot e SQL Server
 
-API REST desenvolvida com Spring Boot. O projeto possui dois domínios: **Brasileirão** e **Olimpíadas**.
-
-- GitHub: `matheuslion01/checkpoint01-semestre2`
-- Docker Hub: `ticorisa/checkpoint01-semestre2`
+API REST desenvolvida em Java com Spring Boot para realizar operações de consulta, inserção, alteração e exclusão de dados armazenados em um banco de dados Microsoft SQL Server.
 
 ## Tecnologias utilizadas
 
 - Java 17
-- Spring Boot 4.0.3
+- Spring Boot 4
+- Spring Web
 - Spring Data JPA
-- MySQL 8
-- Lombok
-- SpringDoc OpenAPI / Swagger UI
+- Hibernate
+- Microsoft SQL Server
 - Docker
+- Maven
+- Swagger / OpenAPI
+- Lombok
 
-## Profiles
-
-A aplicação possui os profiles exigidos para a entrega:
-
-- **default**: utilizado quando nenhum profile é informado. Neste ambiente, o banco e as tabelas podem ser criados/atualizados automaticamente.
-- **prd**: utilizado para execução de produção. Neste profile, a aplicação **não cria banco nem tabelas automaticamente** (`spring.jpa.hibernate.ddl-auto=none`).
-
-O profile `prd` é ativado pela variável de ambiente:
+## Estrutura do projeto
 
 ```text
-SPRING_PROFILES_ACTIVE=prd
+src/
+└── main/
+    ├── java/br/com/fiap/cp01_api02/
+    │   ├── controller/
+    │   │   ├── BrasileiraoController.java
+    │   │   └── OlimpiadasController.java
+    │   ├── model/
+    │   │   ├── Brasileirao.java
+    │   │   └── Olimpiadas.java
+    │   ├── repository/
+    │   │   ├── BrasileiraoRepository.java
+    │   │   └── OlimpiadasRepository.java
+    │   └── Application.java
+    │
+    └── resources/
+        ├── application.properties
+        ├── application-prd.properties
+        └── schema-prd.sql
 ```
 
-## Variáveis de ambiente
+## Banco de dados
 
-No profile `prd`, informe as seguintes variáveis:
+A aplicação utiliza **Microsoft SQL Server**.
 
-| Variável | Descrição | Exemplo |
-|---|---|---|
-| `DB_SERVER_URL` | Endereço do servidor MySQL | `mysql-checkpoint01-semestre2` |
-| `DB_SERVER_PORT` | Porta do MySQL | `3306` |
-| `DB_SCHEMA` | Nome do banco/schema | `api` |
-| `DB_USER` | Usuário do banco | `root` |
-| `DB_PWD` | Senha do banco | `root_pwd` |
-| `SPRING_PROFILES_ACTIVE` | Profile do Spring Boot | `prd` |
+Configuração utilizada no ambiente local:
 
-## Execução local com o profile default
+| Configuração | Valor |
+|---|---|
+| SGBD | Microsoft SQL Server |
+| Servidor | localhost |
+| Porta | 1433 |
+| Usuário | sa |
+| Banco | api |
 
-Com um MySQL disponível em `localhost:3306`, execute:
+A senha do usuário `sa` deve ser definida localmente e **não deve ser publicada no GitHub**.
+
+## Executando o SQL Server com Docker
+
+Certifique-se de que o Docker esteja instalado e em execução.
+
+Execute:
 
 ```bash
-mvn spring-boot:run
+docker run -d --name sqlserver --rm -e MSSQL_SA_PASSWORD="<SUA_SENHA>" -e "ACCEPT_EULA=Y" -p 1433:1433 mcr.microsoft.com/mssql/server:latest
 ```
 
-No profile default, os valores padrão são:
+Substitua `<SUA_SENHA>` pela senha configurada para o usuário `sa`.
+
+Para verificar se o container está em execução:
+
+```bash
+docker ps
+```
+
+O container deverá aparecer com o nome:
 
 ```text
-DB_SERVER_URL=localhost
-DB_SERVER_PORT=3306
-DB_SCHEMA=api
-DB_USER=root
-DB_PWD=root_pwd
+sqlserver
 ```
 
-A aplicação ficará disponível em:
+## Criando o banco de dados
+
+Acesse o SQL Server pelo DBeaver ou outro cliente SQL e execute:
+
+```sql
+CREATE DATABASE api;
+```
+
+Depois, selecione o banco `api`.
+
+No DBeaver, também é possível executar:
+
+```sql
+USE api;
+```
+
+### Tabelas
+
+No perfil padrão de desenvolvimento, a aplicação utiliza:
+
+```properties
+spring.jpa.hibernate.ddl-auto=update
+```
+
+Dessa forma, o Hibernate pode criar/atualizar as tabelas correspondentes às entidades quando a aplicação for executada.
+
+As tabelas utilizadas são:
+
+- `brasileiroes`
+- `olimpiadas`
+
+## Configuração da aplicação
+
+O arquivo:
 
 ```text
-http://localhost:8080
+src/main/resources/application.properties
 ```
 
-## Preparação do banco para o profile prd
+deve apontar para o SQL Server.
 
-Como o profile `prd` não cria banco nem tabelas, eles devem existir antes de iniciar a aplicação.
+Exemplo:
 
-### 1. Criar uma rede Docker
+```properties
+spring.application.name=checkpoint01-semestre2
+server.port=8080
 
-```bash
-docker network create checkpoint01-semestre2-network
+springdoc.swagger-ui.path=/
+
+spring.datasource.url=jdbc:sqlserver://localhost:1433;databaseName=api;encrypt=false;trustServerCertificate=true
+spring.datasource.username=sa
+spring.datasource.password=<SUA_SENHA>
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.database-platform=org.hibernate.dialect.SQLServerDialect
 ```
 
-### 2. Iniciar o MySQL
+Substitua `<SUA_SENHA>` pela senha configurada no SQL Server.
 
-```bash
-docker run -d --name mysql-checkpoint01-semestre2 --network checkpoint01-semestre2-network -e MYSQL_ROOT_PASSWORD=root_pwd -e MYSQL_DATABASE=api mysql:8
-```
+## Executando a aplicação
 
-Aguarde o MySQL terminar a inicialização.
+O projeto possui Maven Wrapper, portanto não é necessário ter o comando `mvn` instalado globalmente.
 
-### 3. Criar as tabelas
+### Windows
 
-O arquivo `src/main/resources/schema-prd.sql` contém a criação das tabelas necessárias.
-
-No **CMD/Git Bash**:
-
-```bash
-docker exec -i mysql-checkpoint01-semestre2 mysql -uroot -proot_pwd api < src/main/resources/schema-prd.sql
-```
-
-No **PowerShell**:
+Na pasta raiz do projeto:
 
 ```powershell
-Get-Content src/main/resources/schema-prd.sql | docker exec -i mysql-checkpoint01-semestre2 mysql -uroot -proot_pwd api
+.\mvnw.cmd clean
 ```
 
-## Download da imagem no Docker Hub
+Depois:
 
-Depois que a imagem estiver publicada, ela poderá ser baixada com:
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+### Linux / macOS
 
 ```bash
-docker pull ticorisa/checkpoint01-semestre2:latest
+./mvnw clean
 ```
 
-## Execução da aplicação pela imagem do Docker Hub
-
-Com o MySQL preparado conforme a seção anterior, execute:
+Depois:
 
 ```bash
-docker run --name checkpoint01-semestre2-api --network checkpoint01-semestre2-network -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prd -e DB_SERVER_URL=mysql-checkpoint01-semestre2 -e DB_SERVER_PORT=3306 -e DB_SCHEMA=api -e DB_USER=root -e DB_PWD=root_pwd ticorisa/checkpoint01-semestre2:latest
+./mvnw spring-boot:run
 ```
 
-Esse comando contempla:
+A aplicação será executada na porta:
 
-- mapeamento da porta `8080`;
-- seleção do profile `prd`;
-- variáveis de ambiente necessárias para a conexão com o banco.
+```text
+8080
+```
 
-## Swagger / OpenAPI
+## Swagger
 
-Com a aplicação em execução, acesse:
+Após iniciar a aplicação, acesse:
 
 ```text
 http://localhost:8080/
 ```
 
-A página inicial exibe o Swagger UI com os endpoints disponíveis.
+O Swagger permite visualizar e testar todos os endpoints da API.
 
 ## Endpoints
 
-### Brasileirão - `/campeonatobrasileiro`
+### Campeonato Brasileiro
 
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/campeonatobrasileiro` | Lista todos os campeonatos |
-| GET | `/campeonatobrasileiro/{id}` | Busca campeonato por ID |
-| POST | `/campeonatobrasileiro` | Cria um campeonato |
-| PUT | `/campeonatobrasileiro/{id}` | Atualiza um campeonato |
-| DELETE | `/campeonatobrasileiro/{id}` | Remove um campeonato |
+#### Listar todos
 
-Exemplo de body:
+```http
+GET /campeonatobrasileiro
+```
+
+#### Buscar por ID
+
+```http
+GET /campeonatobrasileiro/{id}
+```
+
+Exemplo:
+
+```http
+GET /campeonatobrasileiro/1
+```
+
+#### Inserir
+
+```http
+POST /campeonatobrasileiro
+```
+
+Exemplo de JSON:
 
 ```json
 {
@@ -155,17 +224,71 @@ Exemplo de body:
 }
 ```
 
-### Olimpíadas - `/olimpiadas`
+#### Alterar
 
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/olimpiadas` | Lista todas as edições |
-| GET | `/olimpiadas/{id}` | Busca edição por ID |
-| POST | `/olimpiadas` | Cria uma edição |
-| PUT | `/olimpiadas/{id}` | Atualiza uma edição |
-| DELETE | `/olimpiadas/{id}` | Remove uma edição |
+```http
+PUT /campeonatobrasileiro/{id}
+```
 
-Exemplo de body:
+Exemplo:
+
+```http
+PUT /campeonatobrasileiro/1
+```
+
+JSON:
+
+```json
+{
+  "id": 1,
+  "campeao": "Palmeiras",
+  "artilheiro": "Pedro",
+  "revelacao": "Endrick",
+  "goleada": "Flamengo 6x0 Vasco"
+}
+```
+
+#### Excluir
+
+```http
+DELETE /campeonatobrasileiro/{id}
+```
+
+Exemplo:
+
+```http
+DELETE /campeonatobrasileiro/1
+```
+
+---
+
+### Olimpíadas
+
+#### Listar todos
+
+```http
+GET /olimpiadas
+```
+
+#### Buscar por ID
+
+```http
+GET /olimpiadas/{id}
+```
+
+Exemplo:
+
+```http
+GET /olimpiadas/1
+```
+
+#### Inserir
+
+```http
+POST /olimpiadas
+```
+
+Exemplo de JSON:
 
 ```json
 {
@@ -177,32 +300,143 @@ Exemplo de body:
 }
 ```
 
-## Build local da imagem Docker
+#### Alterar
 
-Na raiz do projeto:
-
-```bash
-docker build -t checkpoint01-semestre2 .
+```http
+PUT /olimpiadas/{id}
 ```
 
-Para testar o profile `prd` com a imagem criada localmente:
+Exemplo:
 
-```bash
-docker run --rm --network checkpoint01-semestre2-network -p 8080:8080 -e SPRING_PROFILES_ACTIVE=prd -e DB_SERVER_URL=mysql-checkpoint01-semestre2 -e DB_SERVER_PORT=3306 -e DB_SCHEMA=api -e DB_USER=root -e DB_PWD=root_pwd checkpoint01-semestre2
+```http
+PUT /olimpiadas/1
 ```
 
-## Publicação no Docker Hub
+JSON:
 
-O nome do repositório no Docker Hub deve ser exatamente o mesmo nome do repositório no GitHub.
-
-```bash
-docker login
-docker build -t ticorisa/checkpoint01-semestre2:latest .
-docker push ticorisa/checkpoint01-semestre2:latest
+```json
+{
+  "id": 1,
+  "ano": "2024",
+  "sede": "Paris",
+  "maiorMedalhista": "Estados Unidos",
+  "maiorVencedor": "Léon Marchand"
+}
 ```
 
-Depois da publicação, confirme que a imagem pode ser baixada:
+#### Excluir
+
+```http
+DELETE /olimpiadas/{id}
+```
+
+Exemplo:
+
+```http
+DELETE /olimpiadas/1
+```
+
+## Testando a persistência no SQL Server
+
+Após realizar uma operação de inserção pela API, é possível verificar diretamente no SQL Server se o registro foi armazenado.
+
+No DBeaver:
+
+```sql
+USE api;
+
+SELECT * FROM brasileiroes;
+```
+
+Para consultar os dados de Olimpíadas:
+
+```sql
+USE api;
+
+SELECT * FROM olimpiadas;
+```
+
+Também é possível verificar alterações e exclusões realizadas pelos endpoints `PUT` e `DELETE`.
+
+## Fluxo da aplicação
+
+```text
+Cliente / Swagger
+       ↓
+Controller
+       ↓
+Spring Data JPA
+       ↓
+Repository
+       ↓
+Hibernate
+       ↓
+SQL Server
+```
+
+## Persistência
+
+A aplicação utiliza Spring Data JPA para realizar a persistência dos dados.
+
+As entidades são:
+
+- `Brasileirao`
+- `Olimpiadas`
+
+Os repositories são:
+
+- `BrasileiraoRepository`
+- `OlimpiadasRepository`
+
+As operações disponíveis incluem:
+
+- Consulta de registros
+- Consulta por ID
+- Inserção
+- Alteração
+- Exclusão
+
+## Execução com Docker da aplicação
+
+O projeto também possui um `Dockerfile` para gerar a imagem da aplicação.
+
+Para criar a imagem:
 
 ```bash
-docker pull ticorisa/checkpoint01-semestre2:latest
+docker build -t checkpoint02-api .
 ```
+
+Para executar a aplicação:
+
+```bash
+docker run --name checkpoint02-api -p 8080:8080 checkpoint02-api
+```
+
+A conexão com o SQL Server deve estar corretamente configurada para que a aplicação consiga acessar o banco.
+
+## Checklist para demonstração
+
+Antes da apresentação/avaliação, verificar:
+
+- [ ] Docker está executando o SQL Server
+- [ ] Container `sqlserver` está ativo
+- [ ] Banco `api` existe
+- [ ] Aplicação inicia sem erros
+- [ ] Swagger abre em `http://localhost:8080/`
+- [ ] `GET /campeonatobrasileiro` funciona
+- [ ] `POST /campeonatobrasileiro` grava no SQL Server
+- [ ] `PUT /campeonatobrasileiro/{id}` altera no SQL Server
+- [ ] `DELETE /campeonatobrasileiro/{id}` remove do SQL Server
+- [ ] `GET /olimpiadas` funciona
+- [ ] `POST /olimpiadas` grava no SQL Server
+- [ ] `PUT /olimpiadas/{id}` altera no SQL Server
+- [ ] `DELETE /olimpiadas/{id}` remove do SQL Server
+
+## Autores
+
+Projeto desenvolvido para atividade acadêmica da FIAP.
+
+**Integrantes:**
+
+- Nome: ______________________________ — RM: ______________
+- Nome: ______________________________ — RM: ______________
